@@ -1,0 +1,23 @@
+{
+  "name": "party-parrot-claude",
+  "version": "1.0.0",
+  "description": "Replace Claude Code's thinking spinner with a rainbow party parrot",
+  "scripts": {
+    "setup": "node setup.js",
+    "patch": "node patch-parrot.js",
+    "restore": "node patch-parrot.js --restore",
+    "uninstall": "node uninstall.js"
+  },
+  "keywords": [
+    "claude-code",
+    "party-parrot",
+    "spinner",
+    "terminal",
+    "customization"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": ""
+  }
+}
