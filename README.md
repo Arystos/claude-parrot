@@ -90,6 +90,14 @@ On first run, `build-font.py` creates `config.json` from `config.example.json`. 
 | `fontName` | `"Claude Parrot"` | Font family name (set this in terminal settings) |
 | `output` | `"ClaudeParrot.ttf"` | Output font filename |
 
+### Display Size
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `displayCols` | `1` | Number of terminal columns the animation spans. Set to `2` for a double-width parrot (recommended for bigger animations) |
+
+> **Note:** When changing `displayCols`, you must rebuild the font, reinstall it, and re-patch Claude Code. If the patcher says "no patterns matched", run `node scripts/patch-claude.js --restore` first, then re-patch.
+
 ### Advanced
 
 | Setting | Default | Description |
@@ -146,7 +154,7 @@ node scripts/preview.js
 
 **Font not showing in terminal:** Make sure the terminal font is set to the name in your `config.json` (`fontName`). Restart the terminal after installing the font.
 
-**Patch says "no patterns matched":** Claude Code may have updated. Run `node scripts/patch-claude.js --restore` first, then re-patch. If patterns have changed in a new Claude Code version, the regex in `patch-claude.js` may need updating.
+**Patch says "no patterns matched":** This happens when the spinner was already patched (e.g. after a config change like `displayCols`, or re-running the patcher). Run `node scripts/patch-claude.js --restore` first to restore the originals, then re-patch. If it still fails after a Claude Code update, the regex in `patch-claude.js` may need updating for the new version.
 
 **Multiple GIFs in gifs/ folder:** Set `sourceGif` in `config.json` to the filename you want (e.g. `"gifs/nyancat.gif"`).
 
