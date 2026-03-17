@@ -14,40 +14,72 @@ const fs = require("fs");
 const path = require("path");
 const os = require("os");
 
-// ── Load config ────────────────────────────────────────────────────
-var configPath = path.join(__dirname, "..", "config.json");
-if (!fs.existsSync(configPath)) {
-  var examplePath = path.join(__dirname, "..", "config.example.json");
-  if (fs.existsSync(examplePath)) {
-    fs.copyFileSync(examplePath, configPath);
-    console.log("  Created config.json from example. Edit it to customize.\n");
+// ── Load manifest ─────────────────────────────────────────────────
+var manifestPath = path.join(__dirname, "..", "gifs-manifest.json");
+if (!fs.existsSync(manifestPath)) {
+  console.log("  Error: gifs-manifest.json not found. Run: python build-font.py");
+  process.exit(1);
+}
+var manifest = JSON.parse(fs.readFileSync(manifestPath, "utf-8"));
+var DISPLAY_COLS = manifest.displayCols || 1;
+var FRAMES_PER_GIF = manifest.framesPerGif || 10;
+var ROTATION = manifest.rotation || "sequential";
+
+// Build frame sets — one array per GIF
+var GIF_SETS = manifest.gifs.map(function(gif) {
+  var frames = [];
+  for (var f = 0; f < FRAMES_PER_GIF; f++) {
+    var frame = "";
+    for (var col = 0; col < DISPLAY_COLS; col++) {
+      frame += String.fromCharCode(gif.firstCodepoint + f * DISPLAY_COLS + col);
+    }
+    frames.push(frame + " ");
   }
-}
-
-var config = {};
-if (fs.existsSync(configPath)) {
-  var raw = JSON.parse(fs.readFileSync(configPath, "utf-8"));
-  Object.keys(raw).forEach(function(k) {
-    if (!k.startsWith("//")) config[k] = raw[k];
-  });
-}
-
-var NUM_FRAMES = 10;
-var FIRST_CP = parseInt(config.firstCodepoint || "0xE000", 16);
-var DISPLAY_COLS = config.displayCols || 1;
-
-// Build frame array from config codepoints
-// Each frame is DISPLAY_COLS characters (one per cell column)
-var FRAMES = [];
-for (var f = 0; f < NUM_FRAMES; f++) {
-  var frame = "";
-  for (var col = 0; col < DISPLAY_COLS; col++) {
-    frame += String.fromCharCode(FIRST_CP + f * DISPLAY_COLS + col);
-  }
-  FRAMES.push(frame + " ");
-}
+  return frames;
+});
+var FRAMES = GIF_SETS[0]; // first GIF's frames (used for base function & single-GIF mode)
+var MULTI_GIF = GIF_SETS.length > 1;
 
 var ANIMATION_SPEED = 100;
+
+// ── Proxy builder for multi-GIF rotation ──────────────────────────
+// Returns an IIFE string that creates a Proxy mimicking a ping-pong
+// array but rotating through GIF frame sets on each cycle.
+function buildProxyCode(gifSets, rotation) {
+  var setsJson = JSON.stringify(gifSets);
+  var mode = JSON.stringify(rotation);
+  return [
+    "(function(){",
+    "var _gs=" + setsJson + ";",
+    "var _mode=" + mode + ";",
+    "var _cg=0;",
+    "var _pi=-1;",
+    "var _ar=_gs.map(function(s){",
+    "  var r=s.concat(s.slice().reverse().slice(1));",
+    "  return r;",
+    "});",
+    "return new Proxy([],{",
+    "  get:function(t,p){",
+    "    if(p===\"length\")return _ar[0].length;",
+    "    if(p===Symbol.iterator)return function(){",
+    "      var i=0,a=_ar[_cg];",
+    "      return{next:function(){return i<a.length?{value:a[i++],done:false}:{done:true};}};",
+    "    };",
+    "    if(typeof p===\"string\"&&!isNaN(p)){",
+    "      var idx=+p;",
+    "      if(idx<=1&&_pi>_ar[0].length/2){",
+    "        if(_mode===\"random\")_cg=Math.floor(Math.random()*_gs.length);",
+    "        else _cg=(_cg+1)%_gs.length;",
+    "      }",
+    "      _pi=idx;",
+    "      return _ar[_cg][idx];",
+    "    }",
+    "    return [][p];",
+    "  }",
+    "});",
+    "})()"
+  ].join("");
+}
 
 // ── Find Claude Code installations ─────────────────────────────────
 function findVSCodeExtensions() {
@@ -81,6 +113,7 @@ function patchWebview(extensionDir) {
   var framesStr = JSON.stringify(FRAMES);
   var count = 0;
 
+  // Patch 1: Replace the base frame array (Qj1)
   var before = content;
   content = content.replace(
     /Qj1=\["\xB7","\u2722","\*","\u2736","\u273B","\u273D"\]/g,
@@ -88,11 +121,25 @@ function patchWebview(extensionDir) {
   );
   if (content !== before) { count++; }
 
-  var p2 = '"\xB7","\u2722","\u2733","\u2736","\u273B","\u273D","\u273B","\u2736","\u2733","\u2722"';
-  if (content.indexOf(p2) !== -1) {
-    var cycle = FRAMES.concat(FRAMES.slice().reverse().slice(1));
-    content = content.replace("[" + p2 + "]", JSON.stringify(cycle));
-    count++;
+  // Patch 2: Replace the ping-pong array (Gj1)
+  // For multi-GIF, replace with Proxy; for single-GIF, use static cycle
+  if (MULTI_GIF) {
+    // Match pattern like: Gj1=[...Qj1,...[...Qj1].reverse()]
+    var pingPongRegex = /(\w+)=\[\.\.\.(\w+),\.\.\.\[\.\.\.(\w+)\]\.reverse\(\)\]/;
+    var ppMatch = content.match(pingPongRegex);
+    if (ppMatch) {
+      content = content.replace(pingPongRegex, ppMatch[1] + "=" + buildProxyCode(GIF_SETS, ROTATION));
+      count++;
+      console.log("  patched " + ppMatch[1] + " -> Proxy (multi-GIF rotation)");
+    }
+  } else {
+    // Single GIF: replace hardcoded ping-pong array with our frames' cycle
+    var p2 = '"\xB7","\u2722","\u2733","\u2736","\u273B","\u273D","\u273B","\u2736","\u2733","\u2722"';
+    if (content.indexOf(p2) !== -1) {
+      var cycle = FRAMES.concat(FRAMES.slice().reverse().slice(1));
+      content = content.replace("[" + p2 + "]", JSON.stringify(cycle));
+      count++;
+    }
   }
 
   before = content;
@@ -118,6 +165,7 @@ function patchCliJs(cliDir) {
   var framesStr = JSON.stringify(FRAMES);
   var count = 0;
 
+  // Patch 1: Replace the frame-source function (eQ6) to return our frames
   var funcRegex = /function (\w+)\(\)\{if\(process\.env\.TERM==="xterm-ghostty"\)return\["\xB7"[^\]]*\];return process\.platform==="darwin"\?\["\xB7"[^\]]*\]:\["\xB7"[^\]]*\]\}/;
   var match = content.match(funcRegex);
 
@@ -125,6 +173,18 @@ function patchCliJs(cliDir) {
     content = content.replace(funcRegex, "function " + match[1] + "(){return " + framesStr + "}");
     count++;
     console.log("  patched " + match[1] + "() -> custom spinner");
+  }
+
+  // Patch 2 (multi-GIF only): Replace ping-pong array with Proxy
+  if (MULTI_GIF) {
+    // Match pattern like: RP4=[...LP4,...[...LP4].reverse()]
+    var pingPongRegex = /(\w+)=\[\.\.\.(\w+),\.\.\.\[\.\.\.(\w+)\]\.reverse\(\)\]/;
+    var ppMatch = content.match(pingPongRegex);
+    if (ppMatch) {
+      content = content.replace(pingPongRegex, ppMatch[1] + "=" + buildProxyCode(GIF_SETS, ROTATION));
+      count++;
+      console.log("  patched " + ppMatch[1] + " -> Proxy (multi-GIF rotation)");
+    }
   }
 
   if (count > 0) {
@@ -151,6 +211,8 @@ function restore(filePath) {
 function main() {
   var isRestore = process.argv.indexOf("--restore") !== -1;
   console.log("\n  Claude Parrot — Claude Code Spinner Patcher\n");
+  console.log("  GIFs: " + manifest.gifs.length + (MULTI_GIF ? " (multi-GIF, rotation: " + ROTATION + ")" : " (single)"));
+  console.log("");
 
   var exts = findVSCodeExtensions();
   var cli = findNpmCli();
