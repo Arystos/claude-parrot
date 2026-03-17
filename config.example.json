@@ -1,9 +1,12 @@
 {
+  "// SOURCE": "Path to source GIF. Leave empty to auto-detect any .gif in project root",
+  "sourceGif": "",
+
   "// GRID": "Pixel art resolution. More = finer detail, fewer = blockier but more visible (try 16-32)",
   "gridWidth": 20,
   "gridHeight": 20,
 
-  "// ASPECT": "Terminal cell width:height ratio. Adjust if parrot looks stretched. Typical: 0.5-0.6 for most fonts",
+  "// ASPECT": "Terminal cell width:height ratio. Adjust if animation looks stretched. Typical: 0.5-0.6",
   "cellAspectRatio": 0.55,
 
   "// TRANSPARENCY": "Alpha threshold 0-255. Pixels below this become transparent. Higher = cleaner edges",
@@ -21,23 +24,23 @@
   "// LIGHT_THRESHOLD": "Remove near-white stray pixels. Pixels where min(R,G,B) > this are removed. 0 = keep all",
   "lightThreshold": 200,
 
-  "// VERTICAL_OFFSET": "Shift parrot up (+) or down (-) in the cell, in grid rows. 0 = auto bottom-align",
+  "// VERTICAL_OFFSET": "Shift image up (+) or down (-) in the cell, in grid rows. 0 = auto bottom-align",
   "verticalOffset": 0,
 
   "// PADDING": "Horizontal padding in grid columns (removed from each side). 0 = fill full width",
   "horizontalPadding": 0,
 
-  "// FONT": "Base monospace font to merge parrot glyphs into. Change to match your terminal font",
+  "// FONT": "Base monospace font to merge glyphs into. Change to match your terminal font",
   "baseFont": "C:/Windows/Fonts/CascadiaMono.ttf",
-  "fontName": "Party Terminal",
-  "fontNameInternal": "PartyTerminal",
+  "fontName": "Funny Terminal",
+  "fontNameInternal": "FunnyTerminal",
 
   "// OUTPUT": "Output font filename",
-  "output": "PartyParrot.ttf",
+  "output": "FunnyTerminal.ttf",
 
-  "// FRAMES": "Directory containing parrot frame PNGs (frame_00.png through frame_09.png)",
+  "// FRAMES": "Directory for extracted frames. Auto-populated from GIF. Or provide your own PNGs",
   "frameDir": "frames",
 
-  "// CODEPOINTS": "First Unicode codepoint for parrot frames (Private Use Area). Don't change unless needed",
+  "// CODEPOINTS": "First Unicode codepoint (Private Use Area). Don't change unless needed",
   "firstCodepoint": "0xE000"
 }

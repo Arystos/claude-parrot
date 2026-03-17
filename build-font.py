@@ -1,72 +1,155 @@
 #!/usr/bin/env python3
 """
-Build PartyParrot font — Cascadia Mono + party parrot COLR/CPAL glyphs.
+Funny Terminal — GIF to COLR Font Builder
 
-Reads settings from parrot-config.json. Each parrot frame uses COLR v0
-with one layer per unique color. Layer glyphs contain all rectangles of
-that color as multiple contours, anchored at x=0 and x=advance_w.
+Converts any GIF animation into a color font (COLR/CPAL v0) for use as
+a custom spinner in Claude Code (or any terminal app).
 
-Usage: python build-font.py
-Config: parrot-config.json
+Workflow:
+  1. Drop a .gif in the project root (or set sourceGif in config.json)
+  2. Run: python build-font.py
+  3. Install the output .ttf font
+  4. Run: node patch-claude.js
+
+Config: config.json (auto-created from config.example.json on first run)
 """
 
 import os
 import io
 import json
+import glob
+import shutil
 from PIL import Image
 from fontTools.ttLib import TTFont, newTable
 from fontTools.pens.ttGlyphPen import TTGlyphPen
 from fontTools.colorLib.builder import buildCOLR, buildCPAL
 
+NUM_FRAMES = 10  # fixed: 10 frames per animation
+
 # ── Load config ─────────────────────────────────────────────────────
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-CONFIG_PATH = os.path.join(SCRIPT_DIR, "parrot-config.json")
-EXAMPLE_PATH = os.path.join(SCRIPT_DIR, "parrot-config.example.json")
+CONFIG_PATH = os.path.join(SCRIPT_DIR, "config.json")
+EXAMPLE_PATH = os.path.join(SCRIPT_DIR, "config.example.json")
 
 if not os.path.exists(CONFIG_PATH):
-    import shutil
     shutil.copy(EXAMPLE_PATH, CONFIG_PATH)
-    print(f"  Created {CONFIG_PATH} from example. Edit it to customize, then re-run.")
+    print(f"  Created config.json from config.example.json")
+    print(f"  Edit it to customize, then re-run.\n")
 
 with open(CONFIG_PATH, "r") as f:
-    # Strip comment keys (keys starting with "//")
     raw = json.load(f)
     cfg = {k: v for k, v in raw.items() if not k.startswith("//")}
 
-GRID_W = cfg.get("gridWidth", 10)
-GRID_H = cfg.get("gridHeight", 15)
-CELL_ASPECT = cfg.get("cellAspectRatio", 0.55)  # terminal cell width:height ratio
-ALPHA_THRESHOLD = cfg.get("alphaThreshold", 64)
-RESAMPLE = cfg.get("resample", "nearest")  # "nearest" for sharp, "lanczos" for smooth
-MAX_COLORS = cfg.get("maxColorsPerFrame", 0)  # 0 = unlimited
-
-DARK_THRESHOLD = cfg.get("darkThreshold", 0)  # RGB sum below this = removed
-LIGHT_THRESHOLD = cfg.get("lightThreshold", 0)  # min(R,G,B) above this = removed
-V_OFFSET = cfg.get("verticalOffset", 0)  # shift parrot in grid rows
-H_PADDING = cfg.get("horizontalPadding", 0)  # columns removed from each side
+GRID_W = cfg.get("gridWidth", 20)
+GRID_H = cfg.get("gridHeight", 20)
+CELL_ASPECT = cfg.get("cellAspectRatio", 0.55)
+ALPHA_THRESHOLD = cfg.get("alphaThreshold", 140)
+RESAMPLE = cfg.get("resample", "nearest")
+MAX_COLORS = cfg.get("maxColorsPerFrame", 0)
+DARK_THRESHOLD = cfg.get("darkThreshold", 0)
+LIGHT_THRESHOLD = cfg.get("lightThreshold", 0)
+V_OFFSET = cfg.get("verticalOffset", 0)
+H_PADDING = cfg.get("horizontalPadding", 0)
+SOURCE_GIF = cfg.get("sourceGif", "")
 
 RESAMPLE_METHOD = Image.NEAREST if RESAMPLE == "nearest" else Image.LANCZOS
 BASE_FONT = cfg.get("baseFont", "C:/Windows/Fonts/CascadiaMono.ttf")
-FONT_NAME = cfg.get("fontName", "Party Terminal")
-FONT_NAME_INTERNAL = cfg.get("fontNameInternal", "PartyTerminal")
-OUTPUT = os.path.join(SCRIPT_DIR, cfg.get("output", "PartyParrot.ttf"))
+FONT_NAME = cfg.get("fontName", "Funny Terminal")
+FONT_NAME_INTERNAL = cfg.get("fontNameInternal", "FunnyTerminal")
+OUTPUT = os.path.join(SCRIPT_DIR, cfg.get("output", "FunnyTerminal.ttf"))
 FRAME_DIR = os.path.join(SCRIPT_DIR, cfg.get("frameDir", "frames"))
 FIRST_CP = int(cfg.get("firstCodepoint", "0xE000"), 16) if isinstance(cfg.get("firstCodepoint"), str) else cfg.get("firstCodepoint", 0xE000)
 
-# Count frames
-NUM_FRAMES = len([f for f in os.listdir(FRAME_DIR) if f.startswith("frame_") and f.endswith(".png")])
-CODEPOINTS = {FIRST_CP + i: f"parrot{i:02d}" for i in range(NUM_FRAMES)}
+CODEPOINTS = {FIRST_CP + i: f"frame{i:02d}" for i in range(NUM_FRAMES)}
 
+
+# ── GIF frame extraction ────────────────────────────────────────────
+
+def find_gif():
+    """Find source GIF: config path > auto-detect in project root."""
+    if SOURCE_GIF and os.path.isfile(os.path.join(SCRIPT_DIR, SOURCE_GIF)):
+        return os.path.join(SCRIPT_DIR, SOURCE_GIF)
+    if SOURCE_GIF and os.path.isfile(SOURCE_GIF):
+        return SOURCE_GIF
+
+    # Auto-detect any .gif in project root
+    gifs = glob.glob(os.path.join(SCRIPT_DIR, "*.gif"))
+    if len(gifs) == 1:
+        return gifs[0]
+    elif len(gifs) > 1:
+        print(f"  Found {len(gifs)} GIF files — set 'sourceGif' in config.json to pick one:")
+        for g in gifs:
+            print(f"    {os.path.basename(g)}")
+        return None
+    return None
+
+
+def extract_frames_from_gif(gif_path):
+    """Extract exactly NUM_FRAMES evenly sampled frames from a GIF."""
+    print(f"  Source GIF: {os.path.basename(gif_path)}")
+
+    gif = Image.open(gif_path)
+    total_frames = 0
+    try:
+        while True:
+            total_frames += 1
+            gif.seek(gif.tell() + 1)
+    except EOFError:
+        pass
+
+    print(f"  GIF has {total_frames} frames, sampling {NUM_FRAMES}...")
+
+    # Evenly sample NUM_FRAMES indices
+    if total_frames <= NUM_FRAMES:
+        indices = list(range(total_frames))
+        # Pad with last frame if GIF has fewer frames
+        while len(indices) < NUM_FRAMES:
+            indices.append(total_frames - 1)
+    else:
+        indices = [int(i * total_frames / NUM_FRAMES) for i in range(NUM_FRAMES)]
+
+    os.makedirs(FRAME_DIR, exist_ok=True)
+
+    for out_idx, gif_idx in enumerate(indices):
+        gif.seek(gif_idx)
+        frame = gif.convert("RGBA")
+        frame_path = os.path.join(FRAME_DIR, f"frame_{out_idx:02d}.png")
+        frame.save(frame_path)
+
+    print(f"  Extracted {NUM_FRAMES} frames to {FRAME_DIR}/")
+    return NUM_FRAMES
+
+
+# ── Image processing ────────────────────────────────────────────────
 
 def crop_to_content(img):
     bbox = img.getbbox()
     return img.crop(bbox) if bbox else img
 
 
+# ── Font building ───────────────────────────────────────────────────
+
 def build_font():
-    print(f"  Config: {CONFIG_PATH}")
+    # ── Step 1: Ensure frames exist ──
+    gif_path = find_gif()
+    existing_frames = sorted(glob.glob(os.path.join(FRAME_DIR, "frame_*.png")))
+
+    if gif_path:
+        extract_frames_from_gif(gif_path)
+    elif existing_frames:
+        print(f"  Using existing frames in {FRAME_DIR}/ ({len(existing_frames)} found)")
+    else:
+        print("  Error: No GIF found and no frames/ directory.")
+        print("  Drop a .gif in the project root, or set 'sourceGif' in config.json")
+        return
+
+    # Recount frames after extraction
+    frame_files = sorted(glob.glob(os.path.join(FRAME_DIR, "frame_*.png")))
+    num_frames = min(len(frame_files), NUM_FRAMES)
+    codepoints = {FIRST_CP + i: f"frame{i:02d}" for i in range(num_frames)}
+
+    # ── Step 2: Build font ──
     print(f"  Base font: {BASE_FONT}")
-    print(f"  Frames: {NUM_FRAMES} in {FRAME_DIR}")
     font = TTFont(BASE_FONT)
 
     ascent = font["OS/2"].sTypoAscender
@@ -74,7 +157,6 @@ def build_font():
     advance_w = font["hmtx"]["space"][0]
     em_height = ascent - descent
 
-    usable_w = GRID_W - 2 * H_PADDING  # grid columns after padding
     pixel_w = advance_w // GRID_W
     pixel_h = (em_height - 100) // GRID_H
     grid_h_total = GRID_H * pixel_h
@@ -105,10 +187,10 @@ def build_font():
             elif base_internal in text:
                 record.string = text.replace(base_internal, FONT_NAME_INTERNAL)
 
-    # ── Add parrot base glyphs with full-cell bbox ──
+    # ── Add base glyphs with full-cell bbox ──
     glyph_order = font.getGlyphOrder()
 
-    for cp, name in sorted(CODEPOINTS.items()):
+    for cp, name in sorted(codepoints.items()):
         if name not in glyph_order:
             glyph_order.append(name)
             pen = TTGlyphPen(None)
@@ -120,18 +202,17 @@ def build_font():
             font["glyf"][name] = pen.glyph()
             font["hmtx"][name] = (advance_w, 0)
 
-    # ── Process frames and build color-grouped layer glyphs ──
+    # ── Process frames and build COLR layers ──
     all_colors = []
     color_map = {}
     color_layers = {}
 
-    for i in range(NUM_FRAMES):
+    for i in range(num_frames):
         frame_path = os.path.join(FRAME_DIR, f"frame_{i:02d}.png")
         img = Image.open(frame_path).convert("RGBA")
         img = crop_to_content(img)
-        # Resize with aspect correction: the terminal cell is taller than wide
-        # (cellAspectRatio = width/height, e.g. 0.55). We pre-squash the image
-        # vertically so it looks correct in the tall cell.
+
+        # Aspect-corrected resize
         content_w, content_h = img.size
         img_aspect = content_w / content_h
         correct_rows = int(GRID_W / img_aspect / CELL_ASPECT)
@@ -142,10 +223,9 @@ def build_font():
             padded.paste(img, (0, GRID_H - correct_rows))
             img = padded
 
-        # Quantize colors if configured
+        # Quantize colors
         if MAX_COLORS > 0:
-            # Convert to P mode (palettized) to reduce colors, then back to RGBA
-            alpha = img.split()[3]  # preserve alpha
+            alpha = img.split()[3]
             rgb = img.convert("RGB")
             rgb = rgb.quantize(colors=MAX_COLORS, method=Image.Quantize.MEDIANCUT).convert("RGB")
             img = rgb.convert("RGBA")
@@ -155,24 +235,21 @@ def build_font():
         color_pixels = {}
         for r in range(GRID_H):
             for c in range(GRID_W):
-                # Skip padding columns
                 if H_PADDING > 0 and (c < H_PADDING or c >= GRID_W - H_PADDING):
                     continue
                 rgba = img.getpixel((c, r))
                 if rgba[3] < ALPHA_THRESHOLD:
                     continue
                 rgb = (rgba[0], rgba[1], rgba[2])
-                # Skip near-black pixels (outlines)
                 if DARK_THRESHOLD > 0 and sum(rgb) < DARK_THRESHOLD:
                     continue
-                # Skip near-white pixels (edge artifacts)
                 if LIGHT_THRESHOLD > 0 and min(rgb) > LIGHT_THRESHOLD:
                     continue
                 if rgb not in color_pixels:
                     color_pixels[rgb] = []
                 color_pixels[rgb].append((r, c))
 
-        # Create one layer glyph per color
+        # Create one layer glyph per color (with anchors + bleed)
         layers = []
         for rgb, pixels in color_pixels.items():
             if rgb not in color_map:
@@ -184,22 +261,20 @@ def build_font():
 
             pen = TTGlyphPen(None)
 
-            # Invisible anchors at x=0 and x=advance_w to force full-width bbox.
-            # Placed far below descent so they're never visible.
+            # Invisible anchors to force full-width bbox
             anchor_y = descent - 100
             pen.moveTo((0, anchor_y))
             pen.lineTo((1, anchor_y))
             pen.lineTo((1, anchor_y + 1))
             pen.lineTo((0, anchor_y + 1))
             pen.closePath()
-
             pen.moveTo((advance_w - 1, anchor_y))
             pen.lineTo((advance_w, anchor_y))
             pen.lineTo((advance_w, anchor_y + 1))
             pen.lineTo((advance_w - 1, anchor_y + 1))
             pen.closePath()
 
-            # Draw all rectangles for this color (with 2-unit bleed to avoid seam gaps)
+            # Draw colored rectangles with bleed
             bleed = 2
             for (r, c) in pixels:
                 x0 = max(0, c * pixel_w - bleed)
@@ -216,7 +291,7 @@ def build_font():
             font["hmtx"][glyph_name] = (advance_w, 0)
             layers.append((glyph_name, color_map[rgb]))
 
-        color_layers[f"parrot{i:02d}"] = layers
+        color_layers[f"frame{i:02d}"] = layers
         print(f"  frame_{i:02d}: {sum(len(v) for v in color_pixels.values())} px, {len(color_pixels)} colors")
 
     font.setGlyphOrder(glyph_order)
@@ -225,7 +300,7 @@ def build_font():
     # Update cmap
     for subtable in font["cmap"].tables:
         if hasattr(subtable, "cmap") and subtable.cmap is not None:
-            for cp, name in CODEPOINTS.items():
+            for cp, name in codepoints.items():
                 subtable.cmap[cp] = name
 
     # ── Build COLR/CPAL ──
@@ -238,37 +313,36 @@ def build_font():
     font.save(OUTPUT)
     print()
     print(f"  Built: {OUTPUT}")
-    print(f"  Font: {FONT_NAME} ({NUM_FRAMES} frames, {GRID_W}x{GRID_H} pixel art)")
+    print(f"  Font: {FONT_NAME} ({num_frames} frames, {GRID_W}x{GRID_H} pixel art)")
     print(f"  COLR: {total_layers} layers, {len(all_colors)} palette colors")
 
     # ── Generate preview HTML ──
-    write_preview_html(os.path.basename(OUTPUT))
+    write_preview_html(os.path.basename(OUTPUT), num_frames)
 
     print()
-    print(f"  Install: double-click {os.path.basename(OUTPUT)}")
-    print(f'  Terminal font: "{FONT_NAME}"')
-    print(f"  Preview: test-colr-diag.html")
+    print(f"  Next steps:")
+    print(f"  1. Install: double-click {os.path.basename(OUTPUT)}")
+    print(f'  2. Set terminal font to "{FONT_NAME}"')
+    print(f"  3. Patch Claude: node patch-claude.js")
+    print(f"  4. Preview: open test-colr-diag.html in browser")
 
 
-def write_preview_html(font_file):
-    chars = "".join(f"\\u{FIRST_CP + i:04x}" for i in range(NUM_FRAMES))
-    chars_spaced = " ".join(f"\\u{FIRST_CP + i:04x}" for i in range(NUM_FRAMES))
-    # Build the actual unicode characters for embedding
-    chars_raw = "".join(chr(FIRST_CP + i) for i in range(NUM_FRAMES))
-    chars_spaced_raw = " ".join(chr(FIRST_CP + i) for i in range(NUM_FRAMES))
+def write_preview_html(font_file, num_frames):
+    chars_raw = "".join(chr(FIRST_CP + i) for i in range(num_frames))
+    chars_spaced_raw = " ".join(chr(FIRST_CP + i) for i in range(num_frames))
 
     html = f'''<!DOCTYPE html>
 <html>
 <head>
 <style>
-@font-face {{ font-family: "PartyTest"; src: url("{font_file}"); }}
+@font-face {{ font-family: "FunnyTerminal"; src: url("{font_file}"); }}
 body {{ background: #1a1a2e; color: white; padding: 40px; font-family: sans-serif; }}
-.p {{ font-family: "PartyTest"; }}
+.p {{ font-family: "FunnyTerminal"; }}
 </style>
 </head>
 <body>
-<h2>PartyParrot Preview — {GRID_W}x{GRID_H} grid</h2>
-<p>120px — all {NUM_FRAMES} frames:</p>
+<h2>Funny Terminal Preview — {GRID_W}x{GRID_H} grid</h2>
+<p>120px — all {num_frames} frames:</p>
 <div class="p" style="font-size:120px">{chars_raw}</div>
 <p>120px — spaced:</p>
 <div class="p" style="font-size:120px">{chars_spaced_raw}</div>
@@ -279,8 +353,8 @@ body {{ background: #1a1a2e; color: white; padding: 40px; font-family: sans-seri
 </body>
 </html>'''
 
-    path = os.path.join(SCRIPT_DIR, "test-colr-diag.html")
-    with open(path, "w", encoding="utf-8") as f:
+    preview_path = os.path.join(SCRIPT_DIR, "test-colr-diag.html")
+    with open(preview_path, "w", encoding="utf-8") as f:
         f.write(html)
 
 
