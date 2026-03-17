@@ -1,5 +1,6 @@
 node_modules/
 *.parrot-backup
+parrot-config.json
 
 # Intermediate/test font builds (keep only PartyParrot.ttf)
 CascadiaParrot*.ttf

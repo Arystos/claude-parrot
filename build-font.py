@@ -21,6 +21,12 @@ from fontTools.colorLib.builder import buildCOLR, buildCPAL
 # ── Load config ─────────────────────────────────────────────────────
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 CONFIG_PATH = os.path.join(SCRIPT_DIR, "parrot-config.json")
+EXAMPLE_PATH = os.path.join(SCRIPT_DIR, "parrot-config.example.json")
+
+if not os.path.exists(CONFIG_PATH):
+    import shutil
+    shutil.copy(EXAMPLE_PATH, CONFIG_PATH)
+    print(f"  Created {CONFIG_PATH} from example. Edit it to customize, then re-run.")
 
 with open(CONFIG_PATH, "r") as f:
     # Strip comment keys (keys starting with "//")

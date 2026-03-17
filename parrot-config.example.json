@@ -1,0 +1,43 @@
+{
+  "// GRID": "Pixel art resolution. More = finer detail, fewer = blockier but more visible (try 16-32)",
+  "gridWidth": 20,
+  "gridHeight": 20,
+
+  "// ASPECT": "Terminal cell width:height ratio. Adjust if parrot looks stretched. Typical: 0.5-0.6 for most fonts",
+  "cellAspectRatio": 0.55,
+
+  "// TRANSPARENCY": "Alpha threshold 0-255. Pixels below this become transparent. Higher = cleaner edges",
+  "alphaThreshold": 140,
+
+  "// SHARP": "Resampling: 'nearest' for crisp pixel art, 'lanczos' for smooth gradients",
+  "resample": "nearest",
+
+  "// QUANTIZE": "Max colors per frame. 0 = unlimited. Lower = fewer layers, bolder look (try 8-32)",
+  "maxColorsPerFrame": 16,
+
+  "// DARK_THRESHOLD": "Remove near-black pixels (dark outlines). RGB sum below this = removed. 0 = keep all",
+  "darkThreshold": 80,
+
+  "// LIGHT_THRESHOLD": "Remove near-white stray pixels. Pixels where min(R,G,B) > this are removed. 0 = keep all",
+  "lightThreshold": 200,
+
+  "// VERTICAL_OFFSET": "Shift parrot up (+) or down (-) in the cell, in grid rows. 0 = auto bottom-align",
+  "verticalOffset": 0,
+
+  "// PADDING": "Horizontal padding in grid columns (removed from each side). 0 = fill full width",
+  "horizontalPadding": 0,
+
+  "// FONT": "Base monospace font to merge parrot glyphs into. Change to match your terminal font",
+  "baseFont": "C:/Windows/Fonts/CascadiaMono.ttf",
+  "fontName": "Party Terminal",
+  "fontNameInternal": "PartyTerminal",
+
+  "// OUTPUT": "Output font filename",
+  "output": "PartyParrot.ttf",
+
+  "// FRAMES": "Directory containing parrot frame PNGs (frame_00.png through frame_09.png)",
+  "frameDir": "frames",
+
+  "// CODEPOINTS": "First Unicode codepoint for parrot frames (Private Use Area). Don't change unless needed",
+  "firstCodepoint": "0xE000"
+}
