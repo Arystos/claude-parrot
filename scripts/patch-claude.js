@@ -16,11 +16,12 @@ const os = require("os");
 
 // ── Load manifest ─────────────────────────────────────────────────
 var manifestPath = path.join(__dirname, "..", "gifs-manifest.json");
-if (!fs.existsSync(manifestPath)) {
+var isRestore = process.argv.indexOf("--restore") !== -1;
+if (!fs.existsSync(manifestPath) && !isRestore) {
   console.log("  Error: gifs-manifest.json not found. Run: python build-font.py");
   process.exit(1);
 }
-var manifest = JSON.parse(fs.readFileSync(manifestPath, "utf-8"));
+var manifest = fs.existsSync(manifestPath) ? JSON.parse(fs.readFileSync(manifestPath, "utf-8")) : { gifs: [], displayCols: 1, framesPerGif: 10, rotation: "sequential" };
 var DISPLAY_COLS = manifest.displayCols || 1;
 var FRAMES_PER_GIF = manifest.framesPerGif || 10;
 var ROTATION = manifest.rotation || "sequential";
@@ -209,7 +210,6 @@ function restore(filePath) {
 
 // ── Main ───────────────────────────────────────────────────────────
 function main() {
-  var isRestore = process.argv.indexOf("--restore") !== -1;
   console.log("\n  Claude Parrot — Claude Code Spinner Patcher\n");
   console.log("  GIFs: " + manifest.gifs.length + (MULTI_GIF ? " (multi-GIF, rotation: " + ROTATION + ")" : " (single)"));
   console.log("");
