@@ -18,11 +18,17 @@ if (fs.existsSync(configPath)) {
 
 var NUM_FRAMES = 10;
 var FIRST_CP = parseInt(config.firstCodepoint || "0xE000", 16);
+var DISPLAY_COLS = config.displayCols || 1;
 
 // Build font frame array from codepoints
+// Each frame is DISPLAY_COLS characters (one per cell column)
 var FONT_FRAMES = [];
 for (var f = 0; f < NUM_FRAMES; f++) {
-  FONT_FRAMES.push(String.fromCharCode(FIRST_CP + f) + " ");
+  var frame = "";
+  for (var col = 0; col < DISPLAY_COLS; col++) {
+    frame += String.fromCharCode(FIRST_CP + f * DISPLAY_COLS + col);
+  }
+  FONT_FRAMES.push(frame + " ");
 }
 
 const VERBS = [
