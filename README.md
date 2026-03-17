@@ -52,6 +52,38 @@ The tool automatically extracts 10 evenly-spaced frames from your GIF, converts 
 
 > **Tip:** GIFs with a transparent background and a simple subject work best. Complex GIFs with many colors may need tuning (see Configuration below).
 
+## Multiple GIFs (Rotation)
+
+Drop multiple `.gif` files in the `gifs/` folder. The font builder packs them all into a single font, and the spinner rotates between them — a different animation each time Claude starts thinking.
+
+```bash
+# 1. Drop multiple GIFs in gifs/
+# 2. Build the font (all GIFs are packed in)
+python build-font.py
+
+# 3. Reinstall the font and re-patch
+node scripts/patch-claude.js --restore
+node scripts/patch-claude.js
+```
+
+### Rotation Modes
+
+| Mode | Behavior |
+|------|----------|
+| `"sequential"` | Cycles through GIFs in order (alphabetical, or `gifList` order) |
+| `"random"` | Picks a random GIF each cycle |
+
+### Controlling Order
+
+Set `gifList` in `config.json` to control which GIFs are included and in what order:
+
+```json
+"gifList": ["parrot.gif", "nyancat.gif", "globe.gif"],
+"rotation": "sequential"
+```
+
+Leave `gifList` empty (`[]`) to auto-detect all GIFs in `gifs/`.
+
 ## Configuration
 
 On first run, `build-font.py` creates `config.json` from `config.example.json`. Edit it to customize:
@@ -97,6 +129,13 @@ On first run, `build-font.py` creates `config.json` from `config.example.json`. 
 | `displayCols` | `1` | Number of terminal columns the animation spans. Set to `2` for a double-width parrot (recommended for bigger animations) |
 
 > **Note:** When changing `displayCols`, you must rebuild the font, reinstall it, and re-patch Claude Code. If the patcher says "no patterns matched", run `node scripts/patch-claude.js --restore` first, then re-patch.
+
+### Rotation
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `rotation` | `"sequential"` | `"sequential"` cycles in order, `"random"` picks randomly each cycle |
+| `gifList` | `[]` | GIF filenames from `gifs/` to include (in order). Empty = auto-detect all |
 
 ### Advanced
 
