@@ -148,6 +148,16 @@ node scripts/preview.js
 
 **Multiple GIFs in gifs/ folder:** Set `sourceGif` in `config.json` to the filename you want (e.g. `"gifs/nyancat.gif"`).
 
+**"Claude Code has switched from npm to native installer" warning:** This is harmless — the npm version works fine for patching. If the banner bothers you, add this to `~/.claude/settings.json`:
+
+```json
+{
+  "env": {
+    "DISABLE_INSTALLATION_CHECKS": "1"
+  }
+}
+```
+
 ## How It Works (Technical)
 
 1. **Frame extraction:** The GIF is sampled to exactly 10 frames using Pillow
