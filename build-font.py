@@ -52,6 +52,7 @@ V_OFFSET = cfg.get("verticalOffset", 0)
 H_PADDING = cfg.get("horizontalPadding", 0)
 SOURCE_GIF = cfg.get("sourceGif", "")
 
+DISPLAY_COLS = cfg.get("displayCols", 1)
 RESAMPLE_METHOD = Image.NEAREST if RESAMPLE == "nearest" else Image.LANCZOS
 BASE_FONT = cfg.get("baseFont", "C:/Windows/Fonts/CascadiaMono.ttf")
 FONT_NAME = cfg.get("fontName", "Claude Parrot")
@@ -60,7 +61,13 @@ OUTPUT = os.path.join(SCRIPT_DIR, cfg.get("output", "ClaudeParrot.ttf"))
 FRAME_DIR = os.path.join(SCRIPT_DIR, cfg.get("frameDir", "frames"))
 FIRST_CP = int(cfg.get("firstCodepoint", "0xE000"), 16) if isinstance(cfg.get("firstCodepoint"), str) else cfg.get("firstCodepoint", 0xE000)
 
-CODEPOINTS = {FIRST_CP + i: f"frame{i:02d}" for i in range(NUM_FRAMES)}
+# With multi-cell, each frame uses DISPLAY_COLS codepoints (one per column slice)
+GLYPHS_PER_FRAME = DISPLAY_COLS
+CODEPOINTS = {}
+for i in range(NUM_FRAMES):
+    for col in range(GLYPHS_PER_FRAME):
+        cp = FIRST_CP + i * GLYPHS_PER_FRAME + col
+        CODEPOINTS[cp] = f"frame{i:02d}_c{col}" if GLYPHS_PER_FRAME > 1 else f"frame{i:02d}"
 
 
 # ── GIF frame extraction ────────────────────────────────────────────
@@ -148,7 +155,11 @@ def build_font():
     # Recount frames after extraction
     frame_files = sorted(glob.glob(os.path.join(FRAME_DIR, "frame_*.png")))
     num_frames = min(len(frame_files), NUM_FRAMES)
-    codepoints = {FIRST_CP + i: f"frame{i:02d}" for i in range(num_frames)}
+    codepoints = {}
+    for i in range(num_frames):
+        for col in range(GLYPHS_PER_FRAME):
+            cp = FIRST_CP + i * GLYPHS_PER_FRAME + col
+            codepoints[cp] = f"frame{i:02d}_c{col}" if GLYPHS_PER_FRAME > 1 else f"frame{i:02d}"
 
     # ── Step 2: Build font ──
     print(f"  Base font: {BASE_FONT}")
@@ -159,12 +170,16 @@ def build_font():
     advance_w = font["hmtx"]["space"][0]
     em_height = ascent - descent
 
+    # Total grid spans DISPLAY_COLS cells worth of width
+    total_grid_w = GRID_W * DISPLAY_COLS
     pixel_w = advance_w // GRID_W
     pixel_h = (em_height - 100) // GRID_H
     grid_h_total = GRID_H * pixel_h
     y_top = ascent - (em_height - grid_h_total) // 2 + V_OFFSET * pixel_h
 
-    print(f"  Grid: {GRID_W}x{GRID_H}, pixel={pixel_w}x{pixel_h} units")
+    if DISPLAY_COLS > 1:
+        print(f"  Multi-cell: {DISPLAY_COLS} columns ({total_grid_w}x{GRID_H} total grid)")
+    print(f"  Grid per cell: {GRID_W}x{GRID_H}, pixel={pixel_w}x{pixel_h} units")
     print(f"  Font name: {FONT_NAME}")
 
     # ── Rename font ──
@@ -189,17 +204,23 @@ def build_font():
             elif base_internal in text:
                 record.string = text.replace(base_internal, FONT_NAME_INTERNAL)
 
-    # ── Add base glyphs with full-cell bbox ──
+    # ── Add base glyphs with bbox (extended at slice boundaries for seam coverage) ──
     glyph_order = font.getGlyphOrder()
+    edge_bleed = pixel_w // 2 if GLYPHS_PER_FRAME > 1 else 0
 
     for cp, name in sorted(codepoints.items()):
         if name not in glyph_order:
             glyph_order.append(name)
+            # Determine which slice this glyph is (by position in its frame)
+            idx_in_frame = (cp - FIRST_CP) % GLYPHS_PER_FRAME
+            # Extend bbox past cell boundary at slice edges so COLR layers aren't clipped
+            x_min = -edge_bleed if idx_in_frame > 0 else 0
+            x_max = advance_w + edge_bleed if idx_in_frame < GLYPHS_PER_FRAME - 1 else advance_w
             pen = TTGlyphPen(None)
-            pen.moveTo((0, descent))
-            pen.lineTo((advance_w, descent))
-            pen.lineTo((advance_w, ascent))
-            pen.lineTo((0, ascent))
+            pen.moveTo((x_min, descent))
+            pen.lineTo((x_max, descent))
+            pen.lineTo((x_max, ascent))
+            pen.lineTo((x_min, ascent))
             pen.closePath()
             font["glyf"][name] = pen.glyph()
             font["hmtx"][name] = (advance_w, 0)
@@ -214,14 +235,14 @@ def build_font():
         img = Image.open(frame_path).convert("RGBA")
         img = crop_to_content(img)
 
-        # Aspect-corrected resize
+        # Aspect-corrected resize to total grid (spans DISPLAY_COLS cells)
         content_w, content_h = img.size
         img_aspect = content_w / content_h
-        correct_rows = int(GRID_W / img_aspect / CELL_ASPECT)
+        correct_rows = int(total_grid_w / img_aspect / CELL_ASPECT)
         correct_rows = min(correct_rows, GRID_H)
-        img = img.resize((GRID_W, correct_rows), RESAMPLE_METHOD)
+        img = img.resize((total_grid_w, correct_rows), RESAMPLE_METHOD)
         if correct_rows < GRID_H:
-            padded = Image.new("RGBA", (GRID_W, GRID_H), (0, 0, 0, 0))
+            padded = Image.new("RGBA", (total_grid_w, GRID_H), (0, 0, 0, 0))
             padded.paste(img, (0, GRID_H - correct_rows))
             img = padded
 
@@ -233,68 +254,93 @@ def build_font():
             img = rgb.convert("RGBA")
             img.putalpha(alpha)
 
-        # Group pixels by color
-        color_pixels = {}
-        for r in range(GRID_H):
-            for c in range(GRID_W):
-                if H_PADDING > 0 and (c < H_PADDING or c >= GRID_W - H_PADDING):
-                    continue
-                rgba = img.getpixel((c, r))
-                if rgba[3] < ALPHA_THRESHOLD:
-                    continue
-                rgb = (rgba[0], rgba[1], rgba[2])
-                if DARK_THRESHOLD > 0 and sum(rgb) < DARK_THRESHOLD:
-                    continue
-                if LIGHT_THRESHOLD > 0 and min(rgb) > LIGHT_THRESHOLD:
-                    continue
-                if rgb not in color_pixels:
-                    color_pixels[rgb] = []
-                color_pixels[rgb].append((r, c))
+        # For each column slice, group pixels by color and build layers
+        for col_slice in range(GLYPHS_PER_FRAME):
+            col_start = col_slice * GRID_W
+            col_end = col_start + GRID_W
+            slice_name = f"frame{i:02d}_c{col_slice}" if GLYPHS_PER_FRAME > 1 else f"frame{i:02d}"
 
-        # Create one layer glyph per color (with anchors + bleed)
-        layers = []
-        for rgb, pixels in color_pixels.items():
-            if rgb not in color_map:
-                color_map[rgb] = len(all_colors)
-                all_colors.append(rgb + (255,))
+            # Group pixels by color within this slice
+            color_pixels = {}
+            for r in range(GRID_H):
+                for c in range(col_start, col_end):
+                    if H_PADDING > 0:
+                        local_c = c - col_start
+                        if local_c < H_PADDING or local_c >= GRID_W - H_PADDING:
+                            continue
+                    rgba = img.getpixel((c, r))
+                    if rgba[3] < ALPHA_THRESHOLD:
+                        continue
+                    rgb_val = (rgba[0], rgba[1], rgba[2])
+                    if DARK_THRESHOLD > 0 and sum(rgb_val) < DARK_THRESHOLD:
+                        continue
+                    if LIGHT_THRESHOLD > 0 and min(rgb_val) > LIGHT_THRESHOLD:
+                        continue
+                    if rgb_val not in color_pixels:
+                        color_pixels[rgb_val] = []
+                    # Store local column (within this cell)
+                    color_pixels[rgb_val].append((r, c - col_start))
 
-            glyph_name = f"f{i}_c{color_map[rgb]}"
-            glyph_order.append(glyph_name)
+            # Create one layer glyph per color (with anchors + bleed)
+            layers = []
+            for rgb_val, pixels in color_pixels.items():
+                if rgb_val not in color_map:
+                    color_map[rgb_val] = len(all_colors)
+                    all_colors.append(rgb_val + (255,))
 
-            pen = TTGlyphPen(None)
+                glyph_name = f"f{i}_s{col_slice}_c{color_map[rgb_val]}"
+                glyph_order.append(glyph_name)
 
-            # Invisible anchors to force full-width bbox
-            anchor_y = descent - 100
-            pen.moveTo((0, anchor_y))
-            pen.lineTo((1, anchor_y))
-            pen.lineTo((1, anchor_y + 1))
-            pen.lineTo((0, anchor_y + 1))
-            pen.closePath()
-            pen.moveTo((advance_w - 1, anchor_y))
-            pen.lineTo((advance_w, anchor_y))
-            pen.lineTo((advance_w, anchor_y + 1))
-            pen.lineTo((advance_w - 1, anchor_y + 1))
-            pen.closePath()
+                pen = TTGlyphPen(None)
 
-            # Draw colored rectangles with bleed
-            bleed = 2
-            for (r, c) in pixels:
-                x0 = max(0, c * pixel_w - bleed)
-                x1 = min(advance_w, (c + 1) * pixel_w + bleed)
-                y1_pos = min(ascent, y_top - r * pixel_h + bleed)
-                y0_pos = max(descent, y_top - (r + 1) * pixel_h - bleed)
-                pen.moveTo((x0, y0_pos))
-                pen.lineTo((x1, y0_pos))
-                pen.lineTo((x1, y1_pos))
-                pen.lineTo((x0, y1_pos))
+                # Invisible anchors to force bbox (extended at slice edges)
+                anchor_y = descent - 100
+                anchor_left = -edge_bleed if col_slice > 0 else 0
+                anchor_right = advance_w + edge_bleed if col_slice < GLYPHS_PER_FRAME - 1 else advance_w
+                pen.moveTo((anchor_left, anchor_y))
+                pen.lineTo((anchor_left + 1, anchor_y))
+                pen.lineTo((anchor_left + 1, anchor_y + 1))
+                pen.lineTo((anchor_left, anchor_y + 1))
+                pen.closePath()
+                pen.moveTo((anchor_right - 1, anchor_y))
+                pen.lineTo((anchor_right, anchor_y))
+                pen.lineTo((anchor_right, anchor_y + 1))
+                pen.lineTo((anchor_right - 1, anchor_y + 1))
                 pen.closePath()
 
-            font["glyf"][glyph_name] = pen.glyph()
-            font["hmtx"][glyph_name] = (advance_w, 0)
-            layers.append((glyph_name, color_map[rgb]))
+                # Draw colored rectangles with bleed
+                bleed = 2
+                # Extra bleed at slice edges to cover inter-glyph seams
+                edge_bleed = pixel_w // 2 if GLYPHS_PER_FRAME > 1 else 0
+                for (r, c) in pixels:
+                    # At left edge of non-first slice, extend left past 0
+                    if c == 0 and col_slice > 0:
+                        x0 = -edge_bleed
+                    else:
+                        x0 = max(0, c * pixel_w - bleed)
+                    # At right edge of non-last slice, extend right past advance_w
+                    if c == GRID_W - 1 and col_slice < GLYPHS_PER_FRAME - 1:
+                        x1 = advance_w + edge_bleed
+                    else:
+                        x1 = min(advance_w, (c + 1) * pixel_w + bleed)
+                    y1_pos = min(ascent, y_top - r * pixel_h + bleed)
+                    y0_pos = max(descent, y_top - (r + 1) * pixel_h - bleed)
+                    pen.moveTo((x0, y0_pos))
+                    pen.lineTo((x1, y0_pos))
+                    pen.lineTo((x1, y1_pos))
+                    pen.lineTo((x0, y1_pos))
+                    pen.closePath()
 
-        color_layers[f"frame{i:02d}"] = layers
-        print(f"  frame_{i:02d}: {sum(len(v) for v in color_pixels.values())} px, {len(color_pixels)} colors")
+                font["glyf"][glyph_name] = pen.glyph()
+                font["hmtx"][glyph_name] = (advance_w, 0)
+                layers.append((glyph_name, color_map[rgb_val]))
+
+            color_layers[slice_name] = layers
+
+        total_slice_layers = sum(len(color_layers.get(
+            f"frame{i:02d}_c{col_s}" if GLYPHS_PER_FRAME > 1 else f"frame{i:02d}", []))
+            for col_s in range(GLYPHS_PER_FRAME))
+        print(f"  frame_{i:02d}: {GLYPHS_PER_FRAME} slice(s), {total_slice_layers} layers")
 
     font.setGlyphOrder(glyph_order)
     font["maxp"].numGlyphs = len(glyph_order)
@@ -315,7 +361,8 @@ def build_font():
     font.save(OUTPUT)
     print()
     print(f"  Built: {OUTPUT}")
-    print(f"  Font: {FONT_NAME} ({num_frames} frames, {GRID_W}x{GRID_H} pixel art)")
+    grid_desc = f"{total_grid_w}x{GRID_H} ({DISPLAY_COLS} cells wide)" if DISPLAY_COLS > 1 else f"{GRID_W}x{GRID_H}"
+    print(f"  Font: {FONT_NAME} ({num_frames} frames, {grid_desc} pixel art)")
     print(f"  COLR: {total_layers} layers, {len(all_colors)} palette colors")
 
     # ── Generate preview HTML ──
@@ -330,8 +377,13 @@ def build_font():
 
 
 def write_preview_html(font_file, num_frames):
-    chars_raw = "".join(chr(FIRST_CP + i) for i in range(num_frames))
-    chars_spaced_raw = " ".join(chr(FIRST_CP + i) for i in range(num_frames))
+    # Each frame is GLYPHS_PER_FRAME codepoints; add space between frames
+    frame_strs = []
+    for i in range(num_frames):
+        frame_chars = "".join(chr(FIRST_CP + i * GLYPHS_PER_FRAME + col) for col in range(GLYPHS_PER_FRAME))
+        frame_strs.append(frame_chars)
+    chars_raw = "".join(frame_strs)
+    chars_spaced_raw = " ".join(frame_strs)
 
     html = f'''<!DOCTYPE html>
 <html>
