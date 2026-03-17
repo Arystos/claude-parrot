@@ -5,7 +5,9 @@ Turn any GIF into an animated pixel art spinner for Claude Code. Replace the bor
 **How it works:** Your GIF is converted into a color font (OpenType COLR/CPAL) where each animation frame is a glyph. Claude Code's spinner is patched to cycle through these glyphs, and your terminal font renders them as pixel art.
 
 ![Party Parrot Example](https://img.shields.io/badge/Party_Parrot-🦜-green)
-
+![Windows Only](https://img.shields.io/badge/Platform-Windows-0078D6?logo=windows&logoColor=white)
+![macOS Coming Soon](https://img.shields.io/badge/macOS-coming%20soon-999?logo=apple&logoColor=white)
+![Linux Coming Soon](https://img.shields.io/badge/Linux-coming%20soon-999?logo=linux&logoColor=white)
 [![Ko-fi](https://img.shields.io/badge/Ko--fi-Support%20this%20project-FF5E5B?logo=ko-fi&logoColor=white)](https://ko-fi.com/arystos)
 
 ## Prerequisites

@@ -55,6 +55,29 @@ Open an issue with:
 
 Open an issue describing what you'd like and why. Keep it focused.
 
+## Roadmap
+
+Currently **Windows only**. Help us bring Claude Parrot to other platforms!
+
+### macOS Support
+- [ ] Font install script (`scripts/install-font-mac.sh`) — copy to `~/Library/Fonts/`
+- [ ] Update `config.example.json` with macOS default font path (e.g. `/System/Library/Fonts/SFMono-Regular.otf` or Menlo)
+- [ ] Test COLR/CPAL rendering in macOS Terminal, iTerm2, and Alacritty
+- [ ] Update `patch-claude.js` to find Claude Code on macOS (`~/.npm-global/` or `/usr/local/lib/`)
+
+### Linux Support
+- [ ] Font install script (`scripts/install-font-linux.sh`) — copy to `~/.local/share/fonts/` + `fc-cache`
+- [ ] Update `config.example.json` with Linux default font paths (e.g. `/usr/share/fonts/truetype/dejavu/`)
+- [ ] Test COLR/CPAL rendering in GNOME Terminal, Konsole, Alacritty, kitty
+- [ ] Update `patch-claude.js` to find Claude Code on Linux
+
+### General
+- [ ] Auto-detect OS and use platform-appropriate defaults in `build-font.py`
+- [ ] More GIF examples in `gifs/`
+- [ ] Gallery of community-submitted animations in README
+
+Pick any unchecked item, open a PR, and help us get there!
+
 ## Questions?
 
 Open an issue — happy to help!
