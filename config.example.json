@@ -42,7 +42,7 @@
   "frameDir": "frames",
 
   "// DISPLAY": "Number of terminal columns the animation spans. 2 = double width (recommended for bigger parrot)",
-  "displayCols": 1,
+  "displayCols": 2,
 
   "// CODEPOINTS": "First Unicode codepoint (Private Use Area). Don't change unless needed",
   "firstCodepoint": "0xE000"
