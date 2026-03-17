@@ -7,7 +7,7 @@ const fs = require("fs");
 const path = require("path");
 
 // ── Load config ──
-var configPath = path.join(__dirname, "config.json");
+var configPath = path.join(__dirname, "..", "config.json");
 var config = {};
 if (fs.existsSync(configPath)) {
   var raw = JSON.parse(fs.readFileSync(configPath, "utf-8"));

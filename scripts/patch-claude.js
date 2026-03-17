@@ -15,9 +15,9 @@ const path = require("path");
 const os = require("os");
 
 // ── Load config ────────────────────────────────────────────────────
-var configPath = path.join(__dirname, "config.json");
+var configPath = path.join(__dirname, "..", "config.json");
 if (!fs.existsSync(configPath)) {
-  var examplePath = path.join(__dirname, "config.example.json");
+  var examplePath = path.join(__dirname, "..", "config.example.json");
   if (fs.existsSync(examplePath)) {
     fs.copyFileSync(examplePath, configPath);
     console.log("  Created config.json from example. Edit it to customize.\n");

@@ -1,5 +1,5 @@
 {
-  "// SOURCE": "Path to source GIF. Leave empty to auto-detect any .gif in project root",
+  "// SOURCE": "Path to source GIF. Leave empty to auto-detect any .gif in gifs/ folder",
   "sourceGif": "",
 
   "// GRID": "Pixel art resolution. More = finer detail, fewer = blockier but more visible (try 16-32)",

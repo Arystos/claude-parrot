@@ -6,10 +6,10 @@ Converts any GIF animation into a color font (COLR/CPAL v0) for use as
 a custom spinner in Claude Code (or any terminal app).
 
 Workflow:
-  1. Drop a .gif in the project root (or set sourceGif in config.json)
+  1. Drop a .gif in gifs/ (or set sourceGif in config.json)
   2. Run: python build-font.py
   3. Install the output .ttf font
-  4. Run: node patch-claude.js
+  4. Run: node scripts/patch-claude.js
 
 Config: config.json (auto-created from config.example.json on first run)
 """
@@ -72,8 +72,10 @@ def find_gif():
     if SOURCE_GIF and os.path.isfile(SOURCE_GIF):
         return SOURCE_GIF
 
-    # Auto-detect any .gif in project root
-    gifs = glob.glob(os.path.join(SCRIPT_DIR, "*.gif"))
+    # Auto-detect any .gif in gifs/ folder or project root
+    gifs = glob.glob(os.path.join(SCRIPT_DIR, "gifs", "*.gif"))
+    if not gifs:
+        gifs = glob.glob(os.path.join(SCRIPT_DIR, "*.gif"))
     if len(gifs) == 1:
         return gifs[0]
     elif len(gifs) > 1:
@@ -140,7 +142,7 @@ def build_font():
         print(f"  Using existing frames in {FRAME_DIR}/ ({len(existing_frames)} found)")
     else:
         print("  Error: No GIF found and no frames/ directory.")
-        print("  Drop a .gif in the project root, or set 'sourceGif' in config.json")
+        print("  Drop a .gif in gifs/, or set 'sourceGif' in config.json")
         return
 
     # Recount frames after extraction
@@ -323,7 +325,7 @@ def build_font():
     print(f"  Next steps:")
     print(f"  1. Install: double-click {os.path.basename(OUTPUT)}")
     print(f'  2. Set terminal font to "{FONT_NAME}"')
-    print(f"  3. Patch Claude: node patch-claude.js")
+    print(f"  3. Patch Claude: node scripts/patch-claude.js")
     print(f"  4. Preview: open test-colr-diag.html in browser")
 
 
