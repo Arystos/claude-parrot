@@ -37,14 +37,57 @@ const VERBS = [
   "Cooking...", "Crafting...",
 ];
 
-var frames = FONT_FRAMES;
+// ── Load manifest (with fallback to config for backward compat) ──
+var manifestPath = path.join(__dirname, "..", "gifs-manifest.json");
+var manifest = null;
+if (fs.existsSync(manifestPath)) {
+  manifest = JSON.parse(fs.readFileSync(manifestPath, "utf-8"));
+}
 
-var i = 0;
+var GIF_SETS, ROTATION;
+if (manifest && manifest.gifs) {
+  ROTATION = manifest.rotation || "sequential";
+  GIF_SETS = manifest.gifs.map(function(gif) {
+    var frames = [];
+    var dc = manifest.displayCols || 1;
+    var fpg = manifest.framesPerGif || 10;
+    for (var f = 0; f < fpg; f++) {
+      var frame = "";
+      for (var col = 0; col < dc; col++) {
+        frame += String.fromCharCode(gif.firstCodepoint + f * dc + col);
+      }
+      frames.push(frame + " ");
+    }
+    return { name: gif.name, frames: frames };
+  });
+} else {
+  ROTATION = "sequential";
+  GIF_SETS = [{ name: config.fontName || "GIF", frames: FONT_FRAMES }];
+}
+
+var currentGif = 0;
+var frameIdx = 0;
 var fontName = config.fontName || "Claude Parrot";
-console.log("\n  Claude Parrot — Spinner Preview (Ctrl+C to exit)");
-console.log("  Font: " + fontName + "\n");
 
-setInterval(function () {
-  process.stdout.write("\r  " + frames[i % frames.length] + " " + VERBS[i % VERBS.length] + "     ");
-  i++;
+console.log("\n  Claude Parrot — Spinner Preview (Ctrl+C to exit)");
+console.log("  Font: " + fontName);
+if (GIF_SETS.length > 1) {
+  console.log("  GIFs: " + GIF_SETS.length + " (" + ROTATION + " rotation)");
+}
+console.log("");
+
+setInterval(function() {
+  var set = GIF_SETS[currentGif];
+  var frame = set.frames[frameIdx % set.frames.length];
+  var label = GIF_SETS.length > 1 ? set.name : VERBS[frameIdx % VERBS.length];
+  process.stdout.write("\r  " + frame + " " + label + "     ");
+  frameIdx++;
+  // Rotate after a full cycle
+  if (frameIdx % set.frames.length === 0 && GIF_SETS.length > 1) {
+    if (ROTATION === "random") {
+      currentGif = Math.floor(Math.random() * GIF_SETS.length);
+    } else {
+      currentGif = (currentGif + 1) % GIF_SETS.length;
+    }
+  }
 }, 100);
