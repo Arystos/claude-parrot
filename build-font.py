@@ -353,7 +353,7 @@ body {{ background: #1a1a2e; color: white; padding: 40px; font-family: sans-seri
 <p>24px (terminal-ish):</p>
 <div class="p" style="font-size:24px">{chars_spaced_raw}</div>
 <hr style="margin-top:40px;border-color:#333">
-<p style="color:#888;font-size:14px">Made with <a href="https://github.com/Arystos/funny-terminal" style="color:#8073f5">Funny Terminal</a></p>
+<p style="color:#888;font-size:14px">Made with <a href="https://github.com/Arystos/claude-parrot" style="color:#8073f5">Funny Terminal</a></p>
 <script type="text/javascript" src="https://storage.ko-fi.com/cdn/widget/Widget_2.js"></script>
 <script type="text/javascript">kofiwidget2.init('Support me on Ko-fi', '#8073f5', 'U7U71W5S5I');kofiwidget2.draw();</script>
 </body>

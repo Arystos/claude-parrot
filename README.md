@@ -18,8 +18,8 @@ Turn any GIF into an animated pixel art spinner for Claude Code. Replace the bor
 ## Quick Start
 
 ```bash
-git clone https://github.com/AristideBH/funny-terminal.git
-cd funny-terminal
+git clone https://github.com/Arystos/claude-parrot.git
+cd claude-parrot
 
 # 1. Drop your GIF in gifs/ (a party parrot is included as default)
 
@@ -102,7 +102,7 @@ After building, open `test-colr-diag.html` in your browser to preview the animat
 ## Project Structure
 
 ```
-funny-terminal/
+claude-parrot/
 ├── build-font.py           # Main tool — GIF → color font
 ├── config.example.json     # Default config template
 ├── package.json
