@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Funny Terminal — GIF to COLR Font Builder
+Claude Parrot — GIF to COLR Font Builder
 
 Converts any GIF animation into a color font (COLR/CPAL v0) for use as
 a custom spinner in Claude Code (or any terminal app).
@@ -54,9 +54,9 @@ SOURCE_GIF = cfg.get("sourceGif", "")
 
 RESAMPLE_METHOD = Image.NEAREST if RESAMPLE == "nearest" else Image.LANCZOS
 BASE_FONT = cfg.get("baseFont", "C:/Windows/Fonts/CascadiaMono.ttf")
-FONT_NAME = cfg.get("fontName", "Funny Terminal")
-FONT_NAME_INTERNAL = cfg.get("fontNameInternal", "FunnyTerminal")
-OUTPUT = os.path.join(SCRIPT_DIR, cfg.get("output", "FunnyTerminal.ttf"))
+FONT_NAME = cfg.get("fontName", "Claude Parrot")
+FONT_NAME_INTERNAL = cfg.get("fontNameInternal", "ClaudeParrot")
+OUTPUT = os.path.join(SCRIPT_DIR, cfg.get("output", "ClaudeParrot.ttf"))
 FRAME_DIR = os.path.join(SCRIPT_DIR, cfg.get("frameDir", "frames"))
 FIRST_CP = int(cfg.get("firstCodepoint", "0xE000"), 16) if isinstance(cfg.get("firstCodepoint"), str) else cfg.get("firstCodepoint", 0xE000)
 
@@ -337,13 +337,13 @@ def write_preview_html(font_file, num_frames):
 <html>
 <head>
 <style>
-@font-face {{ font-family: "FunnyTerminal"; src: url("{font_file}"); }}
+@font-face {{ font-family: "ClaudeParrot"; src: url("{font_file}"); }}
 body {{ background: #1a1a2e; color: white; padding: 40px; font-family: sans-serif; }}
-.p {{ font-family: "FunnyTerminal"; }}
+.p {{ font-family: "ClaudeParrot"; }}
 </style>
 </head>
 <body>
-<h2>Funny Terminal Preview — {GRID_W}x{GRID_H} grid</h2>
+<h2>Claude Parrot Preview — {GRID_W}x{GRID_H} grid</h2>
 <p>120px — all {num_frames} frames:</p>
 <div class="p" style="font-size:120px">{chars_raw}</div>
 <p>120px — spaced:</p>
@@ -353,7 +353,7 @@ body {{ background: #1a1a2e; color: white; padding: 40px; font-family: sans-seri
 <p>24px (terminal-ish):</p>
 <div class="p" style="font-size:24px">{chars_spaced_raw}</div>
 <hr style="margin-top:40px;border-color:#333">
-<p style="color:#888;font-size:14px">Made with <a href="https://github.com/Arystos/claude-parrot" style="color:#8073f5">Funny Terminal</a></p>
+<p style="color:#888;font-size:14px">Made with <a href="https://github.com/Arystos/claude-parrot" style="color:#8073f5">Claude Parrot</a></p>
 <script type="text/javascript" src="https://storage.ko-fi.com/cdn/widget/Widget_2.js"></script>
 <script type="text/javascript">kofiwidget2.init('Support me on Ko-fi', '#8073f5', 'U7U71W5S5I');kofiwidget2.draw();</script>
 </body>

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Funny Terminal — Claude Code Spinner Patcher
+ * Claude Parrot — Claude Code Spinner Patcher
  *
  * Replaces Claude Code's thinking spinner with custom animated
  * glyphs from a COLR font (built by build-font.py from any GIF).
@@ -144,7 +144,7 @@ function restore(filePath) {
 // ── Main ───────────────────────────────────────────────────────────
 function main() {
   var isRestore = process.argv.indexOf("--restore") !== -1;
-  console.log("\n  Funny Terminal — Claude Code Spinner Patcher\n");
+  console.log("\n  Claude Parrot — Claude Code Spinner Patcher\n");
 
   var exts = findVSCodeExtensions();
   var cli = findNpmCli();

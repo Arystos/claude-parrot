@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Funny Terminal — Spinner Preview
+// Claude Parrot — Spinner Preview
 // Usage: node preview.js          (font codepoint mode)
 //        node preview.js --ansi   (legacy ANSI art mode)
 
@@ -34,8 +34,8 @@ const VERBS = [
 var frames = FONT_FRAMES;
 
 var i = 0;
-var fontName = config.fontName || "Funny Terminal";
-console.log("\n  Funny Terminal — Spinner Preview (Ctrl+C to exit)");
+var fontName = config.fontName || "Claude Parrot";
+console.log("\n  Claude Parrot — Spinner Preview (Ctrl+C to exit)");
 console.log("  Font: " + fontName + "\n");
 
 setInterval(function () {

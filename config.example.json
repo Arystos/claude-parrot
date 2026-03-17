@@ -32,11 +32,11 @@
 
   "// FONT": "Base monospace font to merge glyphs into. Change to match your terminal font",
   "baseFont": "C:/Windows/Fonts/CascadiaMono.ttf",
-  "fontName": "Funny Terminal",
-  "fontNameInternal": "FunnyTerminal",
+  "fontName": "Claude Parrot",
+  "fontNameInternal": "ClaudeParrot",
 
   "// OUTPUT": "Output font filename",
-  "output": "FunnyTerminal.ttf",
+  "output": "ClaudeParrot.ttf",
 
   "// FRAMES": "Directory for extracted frames. Auto-populated from GIF. Or provide your own PNGs",
   "frameDir": "frames",

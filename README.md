@@ -1,4 +1,4 @@
-# Funny Terminal
+# Claude Parrot
 
 Turn any GIF into an animated pixel art spinner for Claude Code. Replace the boring `· ✢ * ✶ ✻ ✽` thinking spinner with your own custom animation — a party parrot, Nyan Cat, a spinning globe, whatever you want.
 
@@ -29,7 +29,7 @@ python build-font.py
 # 3. Install the font — double-click the .ttf file, or:
 #    (Windows) Right-click → Install for all users
 
-# 4. Set your terminal font to "Funny Terminal" (or the name in your config)
+# 4. Set your terminal font to "Claude Parrot" (or the name in your config)
 #    Windows Terminal: Settings → Profiles → Defaults → Font face
 
 # 5. Patch Claude Code's spinner
@@ -85,8 +85,8 @@ On first run, `build-font.py` creates `config.json` from `config.example.json`. 
 | Setting | Default | Description |
 |---------|---------|-------------|
 | `baseFont` | `"C:/Windows/Fonts/CascadiaMono.ttf"` | Monospace font to merge glyphs into |
-| `fontName` | `"Funny Terminal"` | Font family name (set this in terminal settings) |
-| `output` | `"FunnyTerminal.ttf"` | Output font filename |
+| `fontName` | `"Claude Parrot"` | Font family name (set this in terminal settings) |
+| `output` | `"ClaudeParrot.ttf"` | Output font filename |
 
 ### Advanced
 
