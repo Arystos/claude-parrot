@@ -26,6 +26,23 @@ Thanks for your interest in contributing! Here's how to get started.
 - One feature per PR — don't bundle unrelated changes
 - Be respectful in issues and discussions
 
+## Issue Labels
+
+When opening an issue, add the relevant label so it's easy to triage:
+
+| Label | Use for |
+|-------|---------|
+| `bug` | Something isn't working |
+| `enhancement` | Feature requests and suggestions |
+| `question` | Need help or clarification |
+| `gif-request` | Requesting a new GIF/animation |
+| `config` | Config tuning or settings help |
+| `font-rendering` | Color font display issues |
+| `patching` | Claude Code patcher issues |
+| `windows` / `macos` / `linux` | Platform-specific issues |
+| `good first issue` | Easy tasks for newcomers |
+| `fun` | Just for fun — not useful, just funny |
+
 ## Reporting Bugs
 
 Open an issue with:
