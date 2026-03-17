@@ -6,6 +6,8 @@ Turn any GIF into an animated pixel art spinner for Claude Code. Replace the bor
 
 ![Party Parrot Example](https://img.shields.io/badge/Party_Parrot-🦜-green)
 
+[![Ko-fi](https://img.shields.io/badge/Ko--fi-Support%20this%20project-FF5E5B?logo=ko-fi&logoColor=white)](https://ko-fi.com/arystos)
+
 ## Prerequisites
 
 - [Python 3.10+](https://python.org) with `Pillow` and `fonttools` (`pip install Pillow fonttools`)
@@ -177,6 +179,12 @@ Claude Code updates overwrite the patched files. Re-run:
 ```bash
 node scripts/patch-claude.js
 ```
+
+## Support
+
+If you enjoy this project, consider buying me a coffee!
+
+[![Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/arystos)
 
 ## License
 
