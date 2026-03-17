@@ -44,6 +44,12 @@
   "// DISPLAY": "Number of terminal columns the animation spans. 2 = double width (recommended for bigger parrot)",
   "displayCols": 2,
 
+  "// ROTATION": "Rotation mode when multiple GIFs are in gifs/. 'sequential' cycles in order, 'random' picks randomly each cycle",
+  "rotation": "sequential",
+
+  "// GIFS": "List of GIF filenames from gifs/ to include (in order). Empty = auto-detect all GIFs in gifs/",
+  "gifList": [],
+
   "// CODEPOINTS": "First Unicode codepoint (Private Use Area). Don't change unless needed",
   "firstCodepoint": "0xE000"
 }
