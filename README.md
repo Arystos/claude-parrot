@@ -168,19 +168,7 @@ node scripts/preview.js
 
 ## Contributing
 
-1. Fork the repo
-2. Create a feature branch (`git checkout -b my-feature`)
-3. Make your changes
-4. Test with `python build-font.py` and verify the preview HTML
-5. Commit (`git commit -m "Add my feature"`)
-6. Push and open a PR
-
-**Ideas for contributions:**
-- macOS / Linux font install scripts
-- More GIF examples in `gifs/`
-- Higher resolution grid support (COLR v1 with gradient fills)
-- Auto-patching on Claude Code updates (file watcher)
-- Support for other terminal apps beyond Claude Code
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## After Claude Code Updates
 
