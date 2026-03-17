@@ -16,13 +16,19 @@ const os = require("os");
 
 // Party parrot color cycle (matching the 10-frame GIF)
 // Each frame: colored circle + space
+// Party parrot frames: PUA codepoints U+E000–U+E009
+// Rendered by PartyParrot.ttf font (install first!)
 const PARROT_FRAMES = [
-  "\uD83D\uDD34 ",  // red
-  "\uD83D\uDFE0 ",  // orange
-  "\uD83D\uDFE1 ",  // yellow
-  "\uD83D\uDFE2 ",  // green
-  "\uD83D\uDD35 ",  // blue
-  "\uD83D\uDFE3 ",  // purple
+  "\uE000 ",  // frame 0 (red)
+  "\uE001 ",  // frame 1 (orange/yellow)
+  "\uE002 ",  // frame 2 (green)
+  "\uE003 ",  // frame 3 (teal)
+  "\uE004 ",  // frame 4 (blue)
+  "\uE005 ",  // frame 5 (purple)
+  "\uE006 ",  // frame 6 (magenta)
+  "\uE007 ",  // frame 7 (pink)
+  "\uE008 ",  // frame 8 (rose)
+  "\uE009 ",  // frame 9 (red-dark)
 ];
 
 var ANIMATION_SPEED = 100;
