@@ -1,2 +1,10 @@
 node_modules/
 *.parrot-backup
+
+# Intermediate/test font builds (keep only PartyParrot.ttf)
+CascadiaParrot*.ttf
+ParrotMono.ttf
+PartyTerminal.ttf
+PartyParrot-nocolor.ttf
+TestCOLR.ttf
+test-font.html
