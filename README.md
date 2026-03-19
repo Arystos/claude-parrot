@@ -227,13 +227,19 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## After Claude Code Updates
 
-Claude Code updates overwrite the patched files. The patcher is idempotent — safe to run anytime:
+Claude Code updates normally and will overwrite the patched spinner files. **This does not break anything** — Claude Code updates are never blocked or interfered with.
+
+To get your parrot back after an update, just re-run:
 
 ```bash
 node scripts/patch-claude.js
 ```
 
-**Recommended:** Install auto-patch so you never have to think about it:
+The patcher is idempotent — it detects if already patched and skips, so it's always safe to run.
+
+### Auto-Patch (Recommended)
+
+Install auto-patch so you never have to think about it:
 
 ```bash
 # Windows PowerShell
@@ -243,7 +249,17 @@ pwsh scripts/install-autopatch.ps1
 bash scripts/install-autopatch.sh
 ```
 
-This adds a silent one-liner to your shell profile that re-patches on every terminal open. Zero overhead when already patched. To remove: run with `-Uninstall` / `--uninstall`.
+This adds a silent one-liner to your shell profile that checks and re-patches on every terminal open. When already patched, it does nothing (~50ms, zero output). When Claude Code has updated, it automatically re-patches.
+
+To remove:
+
+```bash
+# Windows PowerShell
+pwsh scripts/install-autopatch.ps1 -Uninstall
+
+# Linux/macOS
+bash scripts/install-autopatch.sh --uninstall
+```
 
 ## Support
 
