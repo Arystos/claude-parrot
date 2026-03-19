@@ -11,7 +11,7 @@
 param([switch]$Uninstall)
 
 $scriptDir = Split-Path -Parent (Split-Path -Parent $PSCommandPath)
-$patchScript = Join-Path $scriptDir "scripts" "patch-claude.js"
+$patchScript = Join-Path (Join-Path $scriptDir "scripts") "patch-claude.js"
 $marker = "# claude-parrot-autopatch"
 $line = "node `"$patchScript`" --quiet 2>`$null $marker"
 
