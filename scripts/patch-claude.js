@@ -17,6 +17,7 @@ const os = require("os");
 // ── Load manifest ─────────────────────────────────────────────────
 var manifestPath = path.join(__dirname, "..", "gifs-manifest.json");
 var isRestore = process.argv.indexOf("--restore") !== -1;
+var isQuiet = process.argv.indexOf("--quiet") !== -1;
 if (!fs.existsSync(manifestPath) && !isRestore) {
   console.log("  Error: gifs-manifest.json not found. Run: python build-font.py");
   process.exit(1);
@@ -104,12 +105,41 @@ function findNpmCli() {
   return null;
 }
 
+// ── Detection ─────────────────────────────────────────────────────
+// Check if a file is already patched by looking for our first codepoint
+var PATCH_MARKER = String.fromCharCode(manifest.firstCodepoint || 0xF000);
+
+function isAlreadyPatched(filePath) {
+  if (!fs.existsSync(filePath)) return false;
+  var content = fs.readFileSync(filePath, "utf-8");
+  return content.indexOf(PATCH_MARKER) !== -1;
+}
+
+// Restore from backup if exists, returns true if restored
+function restoreIfNeeded(filePath) {
+  var backup = filePath + ".parrot-backup";
+  if (fs.existsSync(backup)) {
+    fs.copyFileSync(backup, filePath);
+    return true;
+  }
+  return false;
+}
+
 // ── Patching ───────────────────────────────────────────────────────
 function patchWebview(extensionDir) {
   var file = path.join(extensionDir, "webview", "index.js");
   if (!fs.existsSync(file)) return false;
+
+  // Already patched? Skip.
+  if (isAlreadyPatched(file)) {
+    log("  already patched, skipping");
+    return true;
+  }
+
+  // Not patched — might be stale patch (updated Claude Code overwrote it).
+  // Refresh backup from current (unpatched) file.
   var backup = file + ".parrot-backup";
-  if (!fs.existsSync(backup)) fs.copyFileSync(file, backup);
+  fs.copyFileSync(file, backup);
 
   var content = fs.readFileSync(file, "utf-8");
   var framesStr = JSON.stringify(FRAMES);
@@ -126,16 +156,14 @@ function patchWebview(extensionDir) {
   // Patch 2: Replace the ping-pong array (Gj1)
   // For multi-GIF, replace with Proxy; for single-GIF, use static cycle
   if (MULTI_GIF) {
-    // Match pattern like: Gj1=[...Qj1,...[...Qj1].reverse()]
     var pingPongRegex = /(\w+)=\[\.\.\.(\w+),\.\.\.\[\.\.\.(\w+)\]\.reverse\(\)\]/;
     var ppMatch = content.match(pingPongRegex);
     if (ppMatch) {
       content = content.replace(pingPongRegex, ppMatch[1] + "=" + buildProxyCode(GIF_SETS, ROTATION));
       count++;
-      console.log("  patched " + ppMatch[1] + " -> Proxy (multi-GIF rotation)");
+      log("  patched " + ppMatch[1] + " -> Proxy (multi-GIF rotation)");
     }
   } else {
-    // Single GIF: replace hardcoded ping-pong array with our frames' cycle
     var p2 = '"\xB7","\u2722","\u2733","\u2736","\u273B","\u273D","\u273B","\u2736","\u2733","\u2722"';
     if (content.indexOf(p2) !== -1) {
       var cycle = FRAMES.concat(FRAMES.slice().reverse().slice(1));
@@ -150,51 +178,58 @@ function patchWebview(extensionDir) {
 
   if (count > 0) {
     fs.writeFileSync(file, content, "utf-8");
-    console.log("  webview patched (" + count + " changes)");
+    log("  webview patched (" + count + " changes)");
     return true;
   }
-  console.log("  ! no patterns matched");
+  log("  ! no patterns matched");
   return false;
 }
 
 function patchCliJs(cliDir) {
   var file = path.join(cliDir, "cli.js");
   if (!fs.existsSync(file)) return false;
+
+  // Already patched? Skip.
+  if (isAlreadyPatched(file)) {
+    log("  already patched, skipping");
+    return true;
+  }
+
+  // Refresh or create backup from current (unpatched) file
   var backup = file + ".parrot-backup";
-  if (!fs.existsSync(backup)) fs.copyFileSync(file, backup);
+  fs.copyFileSync(file, backup);
 
   var content = fs.readFileSync(file, "utf-8");
   var framesStr = JSON.stringify(FRAMES);
   var count = 0;
 
-  // Patch 1: Replace the frame-source function (eQ6) to return our frames
+  // Patch 1: Replace the frame-source function
   var funcRegex = /function (\w+)\(\)\{if\(process\.env\.TERM==="xterm-ghostty"\)return\["\xB7"[^\]]*\];return process\.platform==="darwin"\?\["\xB7"[^\]]*\]:\["\xB7"[^\]]*\]\}/;
   var match = content.match(funcRegex);
 
   if (match) {
     content = content.replace(funcRegex, "function " + match[1] + "(){return " + framesStr + "}");
     count++;
-    console.log("  patched " + match[1] + "() -> custom spinner");
+    log("  patched " + match[1] + "() -> custom spinner");
   }
 
   // Patch 2 (multi-GIF only): Replace ping-pong array with Proxy
   if (MULTI_GIF) {
-    // Match pattern like: RP4=[...LP4,...[...LP4].reverse()]
     var pingPongRegex = /(\w+)=\[\.\.\.(\w+),\.\.\.\[\.\.\.(\w+)\]\.reverse\(\)\]/;
     var ppMatch = content.match(pingPongRegex);
     if (ppMatch) {
       content = content.replace(pingPongRegex, ppMatch[1] + "=" + buildProxyCode(GIF_SETS, ROTATION));
       count++;
-      console.log("  patched " + ppMatch[1] + " -> Proxy (multi-GIF rotation)");
+      log("  patched " + ppMatch[1] + " -> Proxy (multi-GIF rotation)");
     }
   }
 
   if (count > 0) {
     fs.writeFileSync(file, content, "utf-8");
-    console.log("  CLI patched (" + count + " changes)");
+    log("  CLI patched (" + count + " changes)");
     return true;
   }
-  console.log("  ! no patterns matched");
+  log("  ! no patterns matched");
   return false;
 }
 
@@ -203,43 +238,47 @@ function restore(filePath) {
   if (fs.existsSync(backup)) {
     fs.copyFileSync(backup, filePath);
     fs.unlinkSync(backup);
-    console.log("  restored: " + filePath);
+    log("  restored: " + filePath);
     return true;
   }
   return false;
 }
 
 // ── Main ───────────────────────────────────────────────────────────
+function log(msg) {
+  if (!isQuiet) console.log(msg);
+}
+
 function main() {
-  console.log("\n  Claude Parrot — Claude Code Spinner Patcher\n");
-  console.log("  GIFs: " + manifest.gifs.length + (MULTI_GIF ? " (multi-GIF, rotation: " + ROTATION + ")" : " (single)"));
-  console.log("");
+  log("\n  Claude Parrot — Claude Code Spinner Patcher\n");
+  log("  GIFs: " + manifest.gifs.length + (MULTI_GIF ? " (multi-GIF, rotation: " + ROTATION + ")" : " (single)"));
+  log("");
 
   var exts = findVSCodeExtensions();
   var cli = findNpmCli();
 
   if (exts.length === 0 && !cli) {
-    console.log("  No Claude Code installations found!");
+    log("  No Claude Code installations found!");
     process.exit(1);
   }
 
   for (var i = 0; i < exts.length; i++) {
     var v = path.basename(exts[i]).replace("anthropic.claude-code-", "");
-    console.log("  [vscode] v" + v);
+    log("  [vscode] v" + v);
     if (isRestore) restore(path.join(exts[i], "webview", "index.js"));
     else patchWebview(exts[i]);
-    console.log("");
+    log("");
   }
 
   if (cli) {
-    console.log("  [cli] npm");
+    log("  [cli] npm");
     if (isRestore) restore(path.join(cli, "cli.js"));
     else patchCliJs(cli);
-    console.log("");
+    log("");
   }
 
-  console.log(isRestore ? "  Restored!" : "  Custom spinner activated!");
-  console.log("");
+  log(isRestore ? "  Restored!" : "  Custom spinner activated!");
+  log("");
 }
 
 main();

@@ -37,7 +37,13 @@ python build-font.py
 # 5. Patch Claude Code's spinner
 node scripts/patch-claude.js
 
-# 6. Launch Claude Code — enjoy your custom spinner!
+# 6. (Optional) Auto-patch on every terminal open — survives Claude Code updates
+#    Windows PowerShell:
+pwsh scripts/install-autopatch.ps1
+#    Linux/macOS:
+bash scripts/install-autopatch.sh
+
+# 7. Launch Claude Code — enjoy your custom spinner!
 claude
 ```
 
@@ -221,11 +227,23 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## After Claude Code Updates
 
-Claude Code updates overwrite the patched files. Re-run:
+Claude Code updates overwrite the patched files. The patcher is idempotent — safe to run anytime:
 
 ```bash
 node scripts/patch-claude.js
 ```
+
+**Recommended:** Install auto-patch so you never have to think about it:
+
+```bash
+# Windows PowerShell
+pwsh scripts/install-autopatch.ps1
+
+# Linux/macOS
+bash scripts/install-autopatch.sh
+```
+
+This adds a silent one-liner to your shell profile that re-patches on every terminal open. Zero overhead when already patched. To remove: run with `-Uninstall` / `--uninstall`.
 
 ## Support
 
