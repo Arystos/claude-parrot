@@ -1,6 +1,6 @@
 {
   "name": "party-parrot-claude",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Replace Claude Code's thinking spinner with a rainbow party parrot",
   "scripts": {
     "setup": "node setup.js",
