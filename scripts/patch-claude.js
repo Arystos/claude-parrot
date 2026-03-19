@@ -45,7 +45,8 @@ var ANIMATION_SPEED = 100;
 
 // ── Proxy builder for multi-GIF rotation ──────────────────────────
 // Returns an IIFE string that creates a Proxy mimicking a ping-pong
-// array but rotating through GIF frame sets on each cycle.
+// array. Switches GIF only when a time gap is detected (>2s between
+// accesses = new prompt), so each thinking session shows one GIF.
 function buildProxyCode(gifSets, rotation) {
   var setsJson = JSON.stringify(gifSets);
   var mode = JSON.stringify(rotation);
@@ -53,8 +54,8 @@ function buildProxyCode(gifSets, rotation) {
     "(function(){",
     "var _gs=" + setsJson + ";",
     "var _mode=" + mode + ";",
-    "var _cg=0;",
-    "var _pi=-1;",
+    "var _cg=Math.floor(Math.random()*_gs.length);",
+    "var _lastT=0;",
     "var _ar=_gs.map(function(s){",
     "  var r=s.concat(s.slice().reverse().slice(1));",
     "  return r;",
@@ -67,13 +68,13 @@ function buildProxyCode(gifSets, rotation) {
     "      return{next:function(){return i<a.length?{value:a[i++],done:false}:{done:true};}};",
     "    };",
     "    if(typeof p===\"string\"&&!isNaN(p)){",
-    "      var idx=+p;",
-    "      if(idx<=1&&_pi>_ar[0].length/2){",
+    "      var now=Date.now();",
+    "      if(_lastT>0&&now-_lastT>2000){",
     "        if(_mode===\"random\")_cg=Math.floor(Math.random()*_gs.length);",
     "        else _cg=(_cg+1)%_gs.length;",
     "      }",
-    "      _pi=idx;",
-    "      return _ar[_cg][idx];",
+    "      _lastT=now;",
+    "      return _ar[_cg][+p];",
     "    }",
     "    return [][p];",
     "  }",
